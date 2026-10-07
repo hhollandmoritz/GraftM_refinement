@@ -1,0 +1,13 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+
+# Initial scripts
+*.sh
+*.Rproj
+
+# Inputs, outputs, and intermidiate files
+inputs/*
+results/*
+output/*

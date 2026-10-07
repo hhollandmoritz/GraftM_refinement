@@ -1,0 +1,11 @@
+name: graftm-package-builder
+
+channels:
+  - conda-forge
+  - bioconda
+
+dependencies:
+  - python
+  - snakemake
+  - mmseqs2
+  - graftm

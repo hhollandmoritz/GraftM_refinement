@@ -1,0 +1,28 @@
+# Settings for running the pipeline locally 
+# (Locally, means not on a job scheduler-controlled cluster,
+# however you could still run it "locally" on a server that 
+# does not use a job scheduler.)
+
+# Maximum number of cores to use for the pipeline run.
+# If multiple genes are run in parallel, they will collectively
+# use at most this many cores.
+cores: 10
+
+# Use the bundled conda environments specified in each rule 
+# rather than the system python environment.
+use-conda: true
+
+# Print the commands that snakemake runs
+printshellcmds: true
+
+# Rerun jobs if they are not complete (essentially, resume, 
+# if interrupted)
+rerun-incomplete: true
+
+# Continue running the rest of the jobs even if some jobs fail.
+# If one gene fails, the other genes will still be run.
+keep-going: true
+
+# Wait for 30 seconds after job finishes before checking if 
+# the expected files were produced. 
+latency-wait: 30
