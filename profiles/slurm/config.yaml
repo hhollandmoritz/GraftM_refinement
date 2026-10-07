@@ -1,0 +1,64 @@
+# Settings for running the pipeline with a slurm job scheduler. 
+# Other executors can be used, learn more here:
+# https://snakemake.readthedocs.io/en/v7.19.1/executing/cluster.html
+
+executor: slurm
+
+# Maximum number of jobs to submit to the cluster at once.
+# Each gene gets 1 job. 
+jobs: 100
+
+# Use the bundled conda environments specified in each rule 
+# rather than the system python environment.
+use-conda: true
+
+# Print the commands that snakemake runs
+printshellcmds: true
+
+# Rerun jobs if they are not complete (essentially, resume, 
+# if interrupted)
+rerun-incomplete: true
+
+# Continue running the rest of the jobs even if some jobs fail.
+# If one gene fails, the other genes will still be run.
+keep-going: true
+
+
+# Wait for 60 seconds after job finishes before checking if 
+# the expected files were produced. 
+latency-wait: 60
+
+# If a rule does not specify its resource needs, these defaults 
+# will be used.
+default-resources:
+  mem_mb: 4000
+  runtime: 720
+  slurm_partition: "normal"
+
+############################################################
+# Resource overrides 
+#
+# Uncomment and modify these values if the defaults
+# in the Snakefile are inappropriate for your cluster.
+#
+# NOTE:
+# These values replace the corresponding values in the
+# Snakefile.
+############################################################
+
+# set-threads:
+#   search_uniref: 8
+#   graftm_draft: 4
+
+# set-resources:
+#   search_uniref:
+#     mem_mb: 32000
+#     runtime: 240
+#
+#   extract_uniref_sequences:
+#     mem_mb: 16000
+#     runtime: 120
+#
+#   graftm_draft:
+#     mem_mb: 32000
+#     runtime: 480
