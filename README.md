@@ -20,10 +20,11 @@ This workflow requires the Uniref90 database. If you do not already have it avai
 ### Software
 The pipeline comes packaged with instructions for creating the necessary environment `envs/graftm.yaml`. Before running the pipeline, run the installation on a node that has access to the internet: 
 
+```bash
 snakemake \
     --profile profiles/local \
     --conda-create-envs-only
-
+```
 If you want the conda environment installed somewhere other than `.snakemake/conda`, make sure to change the conda-prefix setting in each of the profiles/*/config.yaml files. 
 ## Usage
 
