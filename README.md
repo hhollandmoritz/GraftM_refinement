@@ -25,7 +25,7 @@ snakemake \
     --profile profiles/local \
     --conda-create-envs-only
 ```
-If you want the conda environment installed somewhere other than `.snakemake/conda`, make sure to change the conda-prefix setting in each of the profiles/*/config.yaml files. 
+If you want the conda environment installed somewhere other than `.snakemake/conda`, make sure to change the conda-prefix setting in each of the `profiles/*/config.yaml` files. 
 ## Usage
 
 The workflow can be run either locally or on a SLURM cluster using the Snakemake profiles.
@@ -119,8 +119,6 @@ graftm_refinement/
 │   ├── adhA_seeds.faa
 │   └── adhA_seeds_tax.tsv
 ├── envs/
-│   ├── mmseqs.yaml
-│   ├── mfqe.yaml
 │   └── graftm.yaml
 ├── profiles/
 │   ├── local/
