@@ -11,6 +11,7 @@ jobs: 100
 # Use the bundled conda environments specified in each rule 
 # rather than the system python environment.
 use-conda: true
+conda-prefix: ".snakemake/conda"
 
 # Print the commands that snakemake runs
 printshellcmds: true

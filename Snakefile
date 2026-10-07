@@ -19,30 +19,70 @@
 #     seeds: "inputs/adhA_seeds.faa"
 #     taxonomy: "inputs/adhA_seeds_tax.tsv"
 
+from pathlib import Path
 
 ########################
 # Configuration
 ########################
+configfile: "config.yaml"
 
-GENES = list(config["genes"].keys())
+INPUT_DIR = Path(config.get("input_dir", "inputs"))
 
 UNIREF_DB = config["uniref_db"]
 UNIREF_FASTA = config["uniref_fasta"]
 
 MMSEQS_THREADS = config.get("threads", {}).get("mmseqs", 10)
+GRAFTM_THREADS = config.get("threads", {}).get("graftm", 4)
 
+
+########################
+# Find genes in input directory
+########################
+configured_genes = config.get("genes", [])
+
+if configured_genes:
+    # If individual genes are listed, that list takes precedence.
+    GENES = configured_genes
+
+else:
+    # Otherwise find genes in the input directory.
+    seed_files = sorted(INPUT_DIR.glob("*_seeds.faa"))
+
+    GENES = [
+        seed_file.name.removesuffix("_seeds.faa")
+        for seed_file in seed_files
+    ]
+
+    if not GENES:
+        raise ValueError(
+            f"No genes were specified in config.yaml and no seed files "
+            f"were found in {INPUT_DIR}.\n"
+            f"Expected files matching:\n"
+            f"  {INPUT_DIR}/<gene>_seeds.faa"
+        )
 
 ########################
 # Helper functions
 ########################
 
 def get_seeds(wildcards):
-    return config["genes"][wildcards.gene]["seeds"]
+    return str(INPUT_DIR / f"{wildcards.gene}_seeds.faa")
 
 
 def get_seed_taxonomy(wildcards):
-    return config["genes"][wildcards.gene]["taxonomy"]
+    return str(INPUT_DIR / f"{wildcards.gene}_seeds_tax.tsv")
 
+def final_package(gene):
+    """
+    Use the rerooted package as the final target if a manually
+    rooted tree exists; otherwise build the draft package.
+    """
+    rooted_tree = Path(f"results/{gene}/rooted.tree")
+
+    if rooted_tree.exists():
+        return f"results/{gene}/{gene}_rooted.gpkg"
+
+    return f"results/{gene}/{gene}_draft.gpkg"
 
 ########################
 # Main targets
@@ -50,10 +90,7 @@ def get_seed_taxonomy(wildcards):
 
 rule all:
     input:
-        expand(
-            "results/{gene}/{gene}_draft.gpkg",
-            gene=GENES
-        )
+        [final_package(gene) for gene in GENES]
 
 
 ########################
@@ -66,10 +103,12 @@ rule search_uniref:
     output:
         search="results/{gene}/uniref90_search.m8"
     params:
-        db=UNIREF_DB,
+        db=UNIREF_FASTA,
         tmp="results/{gene}/tmp"
     threads:
         MMSEQS_THREADS
+    conda:
+        "envs/graftm.yaml"
     log:
         "results/{gene}/mmseqs.log"
     shell:
@@ -114,6 +153,8 @@ rule extract_uniref_sequences:
         fasta="results/{gene}/uniref90_search.faa"
     params:
         uniref_fasta=UNIREF_FASTA
+    conda:
+        "envs/graftm.yaml"
     log:
         "results/{gene}/mfqe.log"
     shell:
@@ -198,6 +239,8 @@ rule graftm_draft:
         )
     log:
         "results/{gene}/GraftM_draft.log"
+    conda:
+        "envs/graftm.yaml"
     shell:
         r"""
         set +e
@@ -242,4 +285,38 @@ rule graftm_draft:
 
             exit "$status"
         fi
+        """
+########################
+# Build GraftM package with rerooted tree
+########################
+rule graftm_rerooted:
+    input:
+        sequences="results/{gene}/combined.faa",
+        rooted_tree="results/{gene}/rooted.tree",
+        taxonomy_csv="results/{gene}/graftm_create_taxonomy.combined.csv",
+        seqinfo_csv="results/{gene}/graftm_create_seqinfo.combined.csv",
+        alignment="results/{gene}/graftm_create_alignment.combined.faa"
+    output:
+        package=directory(
+            "results/{gene}/{gene}_rooted.gpkg"
+        )
+    threads:
+        GRAFTM_THREADS
+    resources:
+        mem_mb=16000,
+        runtime=240
+    conda:
+        "envs/graftm.yaml"
+    log:
+        "results/{gene}/GraftM_reroot.log"
+    shell:
+        r"""
+        graftM create \
+            --taxtastic_taxonomy {input.taxonomy_csv} \
+            --taxtastic_seqinfo {input.seqinfo_csv} \
+            --alignment {input.alignment} \
+            --rerooted_tree {input.rooted_tree} \
+            --sequences {input.sequences} \
+            --output {output.package} \
+            &> {log}
         """

@@ -12,10 +12,98 @@ For each gene of interest, the workflow:
 6. Notifies user that manual intervention is needed when automatic tree rooting is not possible.
 7. Can incorporate manually-rooted trees to create a final package.
 
-The workflow can run either:
+## Installation and Setup
 
-- locally, using a configurable number of cores; or
-- on a SLURM cluster using the Snakemake SLURM executor.
+### Database
+This workflow requires the Uniref90 database. If you do not already have it available, you will need to download it.
+
+### Software
+The pipeline comes packaged with instructions for creating the necessary environment `envs/graftm.yaml`. Before running the pipeline, run the installation on a node that has access to the internet: 
+
+snakemake \
+    --profile profiles/local \
+    --conda-create-envs-only
+
+If you want the conda environment installed somewhere other than `.snakemake/conda`, make sure to change the conda-prefix setting in each of the profiles/*/config.yaml files. 
+## Usage
+
+The workflow can be run either locally or on a SLURM cluster using the Snakemake profiles.
+
+### 1\. Configure the workflow
+
+Before running, edit `config.yaml` to specify:
+
+* the UniRef90 MMseqs2 database path,
+* the UniRef90 FASTA path,
+* thread defaults,
+* and the genes/packages to build.
+
+For example:
+
+```yaml
+uniref_db: "/path/to/uniref90/uniref90"
+uniref_fasta: "/path/to/uniref90/uniref90.fasta"
+
+threads:
+  mmseqs: 10
+  graftm: 4
+
+genes:
+  genE:
+    seeds: "inputs/genE_seeds.faa"
+    taxonomy: "inputs/genE_seeds_tax.tsv"
+```
+
+Either the folder "inputs" will be searched for seed and taxonomy files, or each gene listed under `genes:` will be processed separately. When genes are declared in the config file, they take precedence over the search of the input directory. 
+
+The file names are sensitive to misspellings. 
+
+All seed fasta files should be named: `[gene]_seeds.faa`
+All seed taxonomy files should be named: `[gene]_seeds_tax.tsv`
+
+### 2\. Run workflow
+
+To run on a local workstation:
+
+```bash
+snakemake \\
+    --profile profiles/local
+```
+
+The maximum number of cores available to the workflow is controlled in:
+
+```text
+profiles/local/config.yaml
+```
+
+To run on a SLURM cluster:
+
+```bash
+snakemake \\
+    --profile profiles/slurm
+```
+
+Cluster settings such as job limits, accounts, partitions, and optional resource overrides can be set in:
+
+```text
+profiles/slurm/config.yaml
+```
+
+### 3\. Manual rooting
+
+If GraftM cannot automatically root a reference tree, the draft package step will fail and the corresponding log should be inspected:
+
+```text
+results/<gene>/GraftM\_draft.log
+```
+
+Inspect the generated alignment and tree, then create a manually rooted tree and save it as:
+
+```text
+results/<gene>/rooted.tree
+```
+
+In development: Rerunning Snakemake will allow the pipeline to continue from that point without repeating the UniRef search.
 
 ## Directory structure
 

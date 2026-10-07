@@ -11,3 +11,9 @@
 inputs/*
 results/*
 output/*
+
+# Snakemake files
+.snakemake/
+
+# Databases
+databases/*

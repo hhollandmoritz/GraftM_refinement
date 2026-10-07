@@ -2,9 +2,9 @@
 # Settings pertaining to the computational environment (slurm or local) are specified 
 # in the profiles folder
 
-uniref_db: "/home/shared/databases/uniref_2026-09-03/uniref90" # CHANGE ME to your uniref database path
+uniref_db: "databases/uniref90/uniref90" # CHANGE ME to your uniref database path and prefix
 
-uniref_fasta: "/home/shared/databases/uniref_2026-09-03/uniref90/uniref90.fasta" # CHANGE ME to your uniref fasta path
+uniref_fasta: "databases/uniref90/uniref90.fasta" # CHANGE ME to your uniref fasta path
 
 # Threads that will be used for each tool. 
 threads:
@@ -13,18 +13,24 @@ threads:
 
 # List of genes, and their input data. 
 # Each gene needs a seed sequence and a taxonomy file. 
+# If genes are listed, only the listed genes will be run. 
+# If no genes are listed, all genes in the inputs folder will be run.
+
 # The seed sequence should be a protein fasta file,
 # The taxonomy file should be a tab-separated file with two columns: sequence ID and taxonomy string.
 # GraftM expects the taxonomy string to be in the format: 
 # "k__Bacteria; p__Proteobacteria; c__Gammaproteobacteria; o__Enterobacterales; f__Enterobacteriaceae; g__Escherichia; s__coli"
 # But it does not require it.
 # Each gene will be run as as separate job. 
-genes:
+#
+# Example gene section below:
+#
+# genes:
 
-  genE:
-    seeds: "inputs/genE_seeds.faa"
-    taxonomy: "inputs/genE_seeds_tax.tsv"
+#   genE:
+#     seeds: "inputs/genE_seeds.faa"
+#     taxonomy: "inputs/genE_seeds_tax.tsv"
 
-  adhA:
-    seeds: "inputs/adhA_seeds.faa"
-    taxonomy: "inputs/adhA_seeds_tax.tsv"
+#   adhA:
+#     seeds: "inputs/adhA_seeds.faa"
+#     taxonomy: "inputs/adhA_seeds_tax.tsv"
