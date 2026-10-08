@@ -8,8 +8,15 @@ uniref_fasta: "databases/uniref90/uniref90.fasta" # CHANGE ME to your uniref fas
 
 # Threads that will be used for each tool. 
 threads:
-  mmseqs: 10
-  graftm: 4
+  mmseqs: 20
+  graftm: 20
+
+resources:
+  mmseqs: 
+    mem_mb: 64000
+  graftm: 
+    mem_mb: 64000
+
 
 # List of genes, and their input data. 
 # Each gene needs a seed sequence and a taxonomy file. 
@@ -25,6 +32,12 @@ threads:
 #
 # Example gene section below:
 #
+genes:
+
+  test:
+    seeds: "inputs/test_seeds.faa"
+    taxonomy: "inputs/test_seeds_tax.tsv"
+
 # genes:
 
 #   genE:

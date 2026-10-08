@@ -31,8 +31,14 @@ INPUT_DIR = Path(config.get("input_dir", "inputs"))
 UNIREF_DB = config["uniref_db"]
 UNIREF_FASTA = config["uniref_fasta"]
 
+# Resources for each tool.  These will be overridden by 
+# anything in config.yaml.
 MMSEQS_THREADS = config.get("threads", {}).get("mmseqs", 10)
 GRAFTM_THREADS = config.get("threads", {}).get("graftm", 4)
+
+MMSEQS_MEM = config.get("resources", {}).get("mmseqs", {}).get("mem_mb", 16000)
+
+GRAFTM_MEM = config.get("resources", {}).get("graftm", {}).get("mem_mb", 16000)
 
 
 ########################
@@ -107,6 +113,8 @@ rule search_uniref:
         tmp="results/{gene}/tmp"
     threads:
         MMSEQS_THREADS
+    resources: 
+        mem_mb=MMSEQS_MEM
     conda:
         "envs/graftm.yaml"
     log:
@@ -241,6 +249,10 @@ rule graftm_draft:
         "results/{gene}/GraftM_draft.log"
     conda:
         "envs/graftm.yaml"
+    threads:
+        GRAFTM_THREADS
+    resources: 
+        mem_mb=GRAFTM_MEM
     shell:
         r"""
         set +e
@@ -306,8 +318,7 @@ rule graftm_rerooted:
     threads:
         GRAFTM_THREADS
     resources:
-        mem_mb=16000,
-        runtime=240
+        mem_mb=GRAFTM_MEM
     conda:
         "envs/graftm.yaml"
     log:
