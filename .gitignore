@@ -12,6 +12,9 @@ inputs/*
 results/*
 output/*
 
+# Slurm outputs
+*.out
+
 # Snakemake files
 .snakemake/
 
