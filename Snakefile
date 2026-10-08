@@ -33,11 +33,15 @@ UNIREF_FASTA = config["uniref_fasta"]
 
 # Resources for each tool.  These will be overridden by 
 # anything in config.yaml.
+MMSEQS_DB_CREATE_THREADS = (
+    config.get("threads", {})
+    .get("mmseqs_db_create", 20)
+)
 MMSEQS_THREADS = config.get("threads", {}).get("mmseqs", 10)
 GRAFTM_THREADS = config.get("threads", {}).get("graftm", 4)
 
+MMSEQS_DB_CREATE_MEM = (config.get("resources", {}).get("mmseqs_db_create", {}).get("mem_mb", 16000))
 MMSEQS_MEM = config.get("resources", {}).get("mmseqs", {}).get("mem_mb", 16000)
-
 GRAFTM_MEM = config.get("resources", {}).get("graftm", {}).get("mem_mb", 16000)
 
 
@@ -98,6 +102,47 @@ rule all:
     input:
         [final_package(gene) for gene in GENES]
 
+##############################
+# Build UniRef MMseqs database
+##############################
+
+rule build_uniref_db:
+    input:
+        fasta=UNIREF_FASTA
+    output:
+        db=UNIREF_DB,
+        dbtype=UNIREF_DB + ".dbtype",
+        index_complete=touch(UNIREF_DB + ".index_complete")
+    params:
+        tmp=UNIREF_DB + "_tmp"
+    threads:
+        MMSEQS_DB_CREATE_THREADS
+    resources:
+        mem_mb=MMSEQS_DB_CREATE_MEM,
+    conda:
+        "envs/graftm.yaml"
+    log:
+        "logs/mmseqs_build_uniref.log"
+    shell:
+        r"""
+        mkdir -p $(dirname {output.db})
+        mkdir -p {params.tmp}
+        mkdir -p $(dirname {log})
+
+        mmseqs createdb \
+            {input.fasta} \
+            {output.db} \
+            --threads {threads} \
+            >> {log} 2>&1
+
+        mmseqs createindex \
+            {output.db} \
+            {params.tmp} \
+            --threads {threads} \
+            >> {log} 2>&1
+
+        touch {output.index_complete}
+        """
 
 ########################
 # Search UniRef90
@@ -106,6 +151,9 @@ rule all:
 rule search_uniref:
     input:
         seeds=get_seeds
+        db=rules.build_uniref_db.output.db,
+        dbtype=rules.build_uniref_db.output.dbtype,
+        index_complete=rules.build_uniref_db.output.index_complete
     output:
         search="results/{gene}/uniref90_search.m8"
     params:

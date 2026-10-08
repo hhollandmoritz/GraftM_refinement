@@ -8,10 +8,13 @@ uniref_fasta: "databases/uniref90/uniref90.fasta" # CHANGE ME to your uniref fas
 
 # Threads that will be used for each tool. 
 threads:
+  mmseqs_db_create: 32
   mmseqs: 20
   graftm: 20
 
 resources:
+  mmseqs_db_create:
+    mem_mb: 480000
   mmseqs: 
     mem_mb: 64000
   graftm: 

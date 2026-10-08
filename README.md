@@ -15,7 +15,9 @@ For each gene of interest, the workflow:
 ## Installation and Setup
 
 ### Database
-This workflow requires the Uniref90 database. If you do not already have it available, you will need to download it.
+This workflow requires the Uniref90 database. If you do not already have it available, you will need to download it. The first time the pipeline runs, the database will be built and indexed. That indexed database will be used for subsequent runs, unless otherwise specified. 
+
+Make sure you have permission to write to the directory containing the database.
 
 ### Software
 The pipeline comes packaged with instructions for creating the necessary environment `envs/graftm.yaml`. Before running the pipeline, run the installation on a node that has access to the internet: 
