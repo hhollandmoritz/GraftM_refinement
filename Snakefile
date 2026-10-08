@@ -150,14 +150,13 @@ rule build_uniref_db:
 
 rule search_uniref:
     input:
-        seeds=get_seeds
+        seeds=get_seeds,
         db=rules.build_uniref_db.output.db,
         dbtype=rules.build_uniref_db.output.dbtype,
         index_complete=rules.build_uniref_db.output.index_complete
     output:
         search="results/{gene}/uniref90_search.m8"
     params:
-        db=UNIREF_FASTA,
         tmp="results/{gene}/tmp"
     threads:
         MMSEQS_THREADS
@@ -174,7 +173,7 @@ rule search_uniref:
         mmseqs easy-search \
             --threads {threads} \
             {input.seeds} \
-            {params.db} \
+            {input.db} \
             {output.search} \
             {params.tmp} \
             &> {log}

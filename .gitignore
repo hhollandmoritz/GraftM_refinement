@@ -11,6 +11,7 @@
 inputs/*
 results/*
 output/*
+logs/*
 
 # Slurm outputs
 *.out
