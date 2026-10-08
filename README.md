@@ -90,6 +90,17 @@ Cluster settings such as job limits, accounts, partitions, and optional resource
 profiles/slurm/config.yaml
 ```
 
+If you are running on a cluster, you can install snakemake in a conda environment to launch the "executor" job. (Executor jobs act like conductors, launching their own daughter slurm jobs).
+
+To create the executor environment (here called, 'snakemake'):
+```text
+conda create -c conda-forge -c bioconda -c nodefaults -n snakemake snakemake snakemake-executor-plugin-slurm
+```
+Then activate it:
+```text
+conda activate snakemake
+```
+
 ### 3\. Manual rooting
 
 If GraftM cannot automatically root a reference tree, the draft package step will fail and the corresponding log should be inspected:
