@@ -245,11 +245,13 @@ rule graftm_draft:
         r"""
         set +e
 
+        cd results/{wildcards.gene}
+
         graftM create \
-            --sequences {input.sequences} \
-            --taxonomy {input.taxonomy} \
-            --output {output.package} \
-            &> {log}
+            --sequences combined.faa \
+            --taxonomy combined_tax.txt \
+            --output {wildcards.gene}_draft.gpkg \
+            &> GraftM_draft.log
 
         status=$?
 
@@ -263,29 +265,30 @@ rule graftm_draft:
 
             if grep -Eqi \
                 'root|reroot|outgroup' \
-                {log}
+                GraftM_draft.log
             then
                 echo "Possible automatic-rooting failure." >&2
                 echo "" >&2
                 echo "Inspect:" >&2
-                echo "    {log}" >&2
+                echo "    results/{wildcards.gene}/GraftM_draft.log" >&2
                 echo "" >&2
                 echo "If manual rooting is required, create:" >&2
                 echo "" >&2
-                echo "    results/{wildcards.gene}/manual_rooted.tree" >&2
+                echo "    results/{wildcards.gene}/rooted.tree" >&2
                 echo "" >&2
-                echo "and then run the manual-rooting rule." >&2
+                echo "and then rerun Snakemake." >&2
             else
                 echo "The failure does not obviously appear to be" >&2
                 echo "related to tree rooting." >&2
                 echo "" >&2
                 echo "Inspect:" >&2
-                echo "    {log}" >&2
+                echo "    results/{wildcards.gene}/GraftM_draft.log" >&2
             fi
 
             exit "$status"
         fi
         """
+
 ########################
 # Build GraftM package with rerooted tree
 ########################
