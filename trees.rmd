@@ -14,56 +14,282 @@ editor_options:
 knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, error = FALSE, fig.width = 6, fig.asp = 0.618, out.width = "100%", fig.align = "center")
 
 library(tidytree)
+library(ape)
 library(ggtree)
 library(cowplot)
 library(tidyverse)
 library(here)
-#source(here("setup.R"))
 
 map <- purrr::map
-main_dir <- here("GraftM-analysis", "output")
-dir.create(main_dir, recursive = TRUE)
+main_dir <- here("results")
 
-colour_brewer <- setNames(append(as.list(RColorBrewer::brewer.pal(12, "Paired")), c("#737373", "#FFFFFF", "#000000")), c("blue", "darkblue", "green", "darkgreen", "red", "darkred", "orange", "darkorange", "purple", "darkpurple", "yellow", "brown", "grey", "white", "black"))
-habitat_levels <- c("Palsa", "Bog", "Fen")
-colour_habitat <- c("#703C1B", "#058000", "#0001FF")
-shape_habitat  <- c(15, 16, 17)
-fill_habitat   <- colour_habitat
-
-depth_levels <- c("0-9", "10-19", "20-29", "30-39")
-depth_labels <- c("0", "10", "20", "30")
-fill_depth   <- RColorBrewer::brewer.pal(5, "YlOrBr")[-1]
-colour_depth <- fill_depth
-
-year_levels <- c("2011", "2012", "2013", "2014", "2015", "2016", "2017")
-year_labels <- year_levels
-fill_year   <- RColorBrewer::brewer.pal(7, "OrRd")
-colour_year <- fill_year
 
 set.seed(42)
 ```
 
-```{r wrangling}
+```{r functions, include = FALSE}
+parse_sequence_labels <- function(.data) {
 
-map_chr( c("all_aab_dh"), ~ here("GraftM-analysis/output", ., str_c(., ".gpkg"), str_c(., "_draft.gpkg.refpkg"), str_c(., ".tre"))
-        
-trees <- tibble(gene = c("all_aab_dh")) %>%
+  .data %>%
+    mutate(
+
+      # Identify sequence source
+      seq_origin = if_else(
+        str_detect(seqname, "UniRef90"),
+        "UniRef90",
+        "Seed"
+      ),
+
+      # Sequence ID
+      sequence_id = seqname,
+
+      # Gene name
+      gene_name = case_when(
+
+        # sequenceid_gene_name_[organism]
+        seq_origin == "Seed" ~
+          str_match(
+            tax_id,
+            "^[^_]+_(.*)_\\["
+          )[, 2],
+
+        seq_origin == "UniRef90" ~
+          str_match(
+            tax_id,
+            "^\\s*(.*?)_n="
+          )[, 2],
+
+        TRUE ~ NA_character_
+      ),
+
+      # Number of sequences represented by UniRef cluster
+      n_sequences = case_when(
+
+        seq_origin == "UniRef90" ~
+          as.integer(
+            str_match(
+              tax_id,
+              "_n=([0-9]+)_Tax="
+            )[, 2]
+          ),
+
+        TRUE ~ NA_integer_
+      ),
+
+      # Organism
+      organism = case_when(
+
+        # [...organism...]
+        seq_origin == "Seed" ~
+          str_match(
+            tax_id,
+            "\\[(.*)\\]$"
+          )[, 2],
+
+        # _Tax=organism_TaxID=
+        seq_origin == "UniRef90" ~
+          str_match(
+            tax_id,
+            "_Tax=(.*?)_TaxID="
+          )[, 2],
+
+        TRUE ~ NA_character_
+      ),
+
+      # Make organism names readable
+      organism = str_replace_all(
+        organism,
+        "_",
+        " "
+      ),
+      genus = word(organism, 1), 
+
+      # NCBI TaxID for UniRef sequences
+      NCBI_taxid = case_when(
+
+        seq_origin == "UniRef90" ~
+          str_match(
+            tax_id,
+            "_TaxID=([0-9]+)"
+          )[, 2],
+
+        TRUE ~ NA_character_
+      ),
+
+      # Everything following TaxID
+      other_information = case_when(
+
+        seq_origin == "UniRef90" ~
+          str_match(
+            tax_id,
+            "_TaxID=[0-9]+_(.*)$"
+          )[, 2],
+
+        TRUE ~ NA_character_
+      )
+    )
+}
+
+
+```
+
+```{r wrangling}
+trees <- tibble(gene = c(
+  #"all_dh",
+  "EC_1_1_1_1", 
+  "EC_1_1_1_6", 
+  "EC_1_1_1_18", 
+  "EC_1_1_1_215", 
+  "EC_1_1_5_2")) %>%
   mutate(
-    tree_path = map_chr(gene, ~ here("GraftM-analysis/output", ., str_c(., ".gpkg"), str_c(., "_draft.gpkg.refpkg"), str_c(., ".tre"))),
-    tree = map(tree_path, read.tree),
-    tax_path = map_chr(gene, ~ here("GraftM-analysis/output", ., str_c(., "_tax.tsv"))),
+    tree_path = map_chr(gene, ~ list.files(here(main_dir, .), pattern = "graftm_create_tree.combined.tree", full.names = T)),
+    tree = purrr::map(tree_path, ~read.tree(file = .)),
+    tax_path = map_chr(gene, ~ list.files(here(main_dir, .), pattern = "graftm_create_seqinfo", full.names = T)),
+    taxonomy = map(tax_path, ~read_csv(file = .)),
+    alignment_path = map_chr(gene, ~ list.files(here(main_dir, .), pattern = "graftm_create_alignment", full.names = T)),
+    metadata = map(taxonomy, ~ parse_sequence_labels(.))
   )
+
+
+trees$taxonomy[[1]] %>% parse_sequence_labels() %>% View()
+
 ```
 
 ```{r spec-summary-function}
-plot_tree <- function(tree, filename) {
-  tree %>%
-    ggtree()
-    # geom_tiplab(aes(subset = label == "characterised"), label = "characterised")
-  ggsave(here(main_dir, filename), width = 12, height = 7, dpi = 900)
+plot_tree <- function(trees) {
+  tree <- trees %>% pull("tree") %>% pluck(1) 
+  metadata <- trees %>% pull("metadata") %>% pluck(1) %>%
+    column_to_rownames(var = "sequence_id")
+  gene_id <- trees %>% pull("gene") %>% pluck(1)
+  fasta_file <- trees %>% pull("alignment_path") %>% pluck(1)
+  
+  filename <- paste0(gene_id,"_","draft_tree.pdf")
+  p <- ggtree(tree,) %<+%
+    metadata +
+    #  geom_tiplab(
+    #   aes(label = gene_name),
+    #   align = T
+    # ) +
+     #geom_text2(aes(label = organism)) +
+     geom_tippoint(
+       aes(
+         subset = seq_origin == "Seed",
+         color = genus)) +
+    ggtitle(gene_id)
+  p <- msaplot(
+  p,
+  fasta = fasta_file,
+  offset = 0.05,
+  width = 2
+ )
+  ggsave(p, filename = here(main_dir, gene_id, filename), width = 20, height = 20)
+  return(p)
 }
+
+
+
+
+
+plot_tree(trees[1,])
+
+# Run trees
+trees <- trees %>%
+  mutate(
+    plot = map(
+      seq_len(nrow(trees)),
+      \(i) plot_tree(trees[i, ])
+    )
+)
+
+```
+
+```{r}
+
+filter_trees_to_seed_genera <- function(trees) {
+
+  filtered <- map2(
+    trees$tree,
+    trees$metadata,
+    \(tree, metadata) {
+
+      seed_genera <- metadata %>%
+        filter(seq_origin == "Seed") %>%
+        pull(genus) %>%
+        na.omit() %>%
+        unique()
+
+      metadata_filtered <- metadata %>%
+        filter(genus %in% seed_genera)
+
+      tips_to_keep <- intersect(
+        tree$tip.label,
+        metadata_filtered$seqname
+      )
+
+      tree_filtered <- keep.tip(
+        tree,
+        tips_to_keep
+      )
+
+      metadata_filtered <- metadata_filtered %>%
+        filter(seqname %in% tree_filtered$tip.label) %>%
+        slice(match(tree_filtered$tip.label, seqname))
+
+      list(
+        tree = tree_filtered,
+        metadata = metadata_filtered
+      )
+    }
+  )
+
+  trees %>%
+    mutate(
+      tree = map(filtered, "tree"),
+      metadata = map(filtered, "metadata")
+    )
+}
+
+trees_seed_genera <- filter_trees_to_seed_genera(trees)
+
+plot_tree <- function(trees) {
+  tree <- trees %>% pull("tree") %>% pluck(1) 
+  metadata <- trees %>% pull("metadata") %>% pluck(1) %>%
+    column_to_rownames(var = "sequence_id")
+  gene_id <- trees %>% pull("gene") %>% pluck(1)
+  fasta_file <- trees %>% pull("alignment_path") %>% pluck(1)
+  
+  filename <- paste0(gene_id,"_","filtered_draft_tree.pdf")
+  p <- ggtree(tree,) %<+%
+    metadata +
+     geom_tiplab(
+      aes(label = gene_name),
+      align = T
+    ) +
+     #geom_text2(aes(label = organism)) +
+     geom_tippoint(
+       alpha = 0.5,
+       aes(
+         #subset = seq_origin == "Seed",
+         color = genus,
+         shape = seq_origin)) +
+    ggtitle(gene_id)
+  ggsave(p, filename = here(main_dir, gene_id, filename), width = 20, height = 20)
+  return(p)
+}
+# Run trees
+trees_seed_genera <- trees_seed_genera %>%
+  mutate(
+    plot = map(
+      seq_len(nrow(trees)),
+      \(i) plot_tree(trees[i, ])
+    )
+)
+
+
+plot_tree(trees_seed_genera[1,])
+
 ```
 
 ```{r spec-summary}
-plot_tree()
+plot_tree(tree = trees$tree[[1]])
 ```
