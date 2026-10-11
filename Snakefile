@@ -248,15 +248,22 @@ rule combine_sequences:
 
 rule create_uniref_taxonomy:
     input:
-        ids="results/{gene}/uniref90_search_ids.txt"
+        fasta="results/{gene}/uniref90_search.faa"
     output:
         taxonomy="results/{gene}/uniref90_search_tax.txt"
     shell:
         r"""
         awk \
             -v gene="{wildcards.gene}" \
-            'BEGIN {{OFS="\t"}} {{print $0, gene}}' \
-            {input.ids} \
+            'BEGIN {{OFS="\t"}}
+             /^>/ {{
+                 header = substr($0, 2)
+                 split(header, fields, " ")
+                 id = fields[1]
+                 description = substr(header, length(id) + 2)
+                 print id, gene "; " description
+             }}' \
+            {input.fasta} \
             > {output.taxonomy}
         """
 
